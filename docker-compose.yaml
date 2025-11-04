@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  dogstatsd:
+    image: gcr.io/datadoghq/dogstatsd:latest
+    container_name: dd-agent
+    environment:
+      DD_API_KEY: ${DD_API_KEY:?set DD_API_KEY in an .env file before running}
+      DD_SITE: ${DD_SITE:-us5.datadoghq.com}
+      DD_ENV: ${DD_ENV:-poc}
+      DD_SERVICE: ${DD_SERVICE:-edge-dogstatsd-poc}
+      DD_HOSTNAME: ${DD_HOSTNAME:-edge-dogstatsd-poc-hostname}
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: ${DD_DOGSTATSD_NON_LOCAL_TRAFFIC:-true}
+      DD_DOGSTATSD_PORT: ${DD_DOGSTATSD_PORT:-8125}
+      DD_HISTOGRAM_PERCENTILES: "0.95 0.99"
+      DD_HISTOGRAM_AGGREGATES: "max median avg count"
+      DD_APM_ENABLED: "false"
+      DD_LOGS_ENABLED: "false"
+      DD_PROCESS_AGENT_ENABLED: "false"
+      DD_RUNTIME_METRICS_ENABLED: "false"
+    ports:
+      - "${DD_DOGSTATSD_PORT:-8125}:${DD_DOGSTATSD_PORT:-8125}/udp"
+    restart: unless-stopped
+
+  emitter:
+    build:
+      context: .
+      dockerfile: Dockerfile.emitter
+    environment:
+      DOGSTATSD_HOST: dogstatsd
+      DOGSTATSD_PORT: ${DD_DOGSTATSD_PORT:-8125}
+      EMIT_INTERVAL: ${EMIT_INTERVAL:-5s}
+      EMIT_ITERATIONS: ${EMIT_ITERATIONS:-120}
+      EMIT_NAMESPACE: ${EMIT_NAMESPACE:-edge_nodes.}
+      EMIT_TAGS: ${EMIT_TAGS:-service:edge-scanner,product:fastscan,priority:medium,region:us-east-1}
+    depends_on:
+      - dogstatsd

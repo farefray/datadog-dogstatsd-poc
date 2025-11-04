@@ -1,0 +1,4 @@
+bin/
+.gocache/
+
+.env
